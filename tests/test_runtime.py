@@ -132,6 +132,30 @@ class RuntimeTests(unittest.TestCase):
                                 "_zshard_run_deferred; print $COUNTER")
         self.assertEqual(result.stdout.splitlines(), ["0", "1", "1"])
 
+    def test_extension_hooks_theme_and_completion_registration(self):
+        custom = self.home / "completions"
+        custom.mkdir()
+        (custom / "_fixture").write_text("#compdef fixture\n_arguments '*:path:_files'\n")
+        script = (
+            "one() { :; }; two() { :; }; zshard hook precmd one; zshard hook precmd two; "
+            "zshard unhook precmd one; print -rl -- $precmd_functions; "
+            "my_theme() { PROMPT=\"status=$1 seconds=$2\"; }; zshard theme my_theme; "
+            "false; _zshard_precmd; print -r -- $PROMPT; "
+            "zshard completions " + shlex.quote(str(custom)) + "; zshard complete; print -r -- $_comps[fixture]"
+        )
+        result = self.shell.run(script, interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("one", result.stdout.splitlines())
+        self.assertIn("two", result.stdout.splitlines())
+        self.assertIn("status=1 seconds=0", result.stdout.splitlines())
+        self.assertIn("_fixture", result.stdout.splitlines())
+
+    def test_noninteractive_cli_context(self):
+        result = subprocess.run(["zsh", str(ROOT / "bin/zshard"), "ai", "context"],
+                                env=self.shell.env, cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["schema"], "zshard.context.v1")
+
     def test_bad_plugin_identifiers_and_pins(self):
         for command in ["plugin add ../bad https://example.invalid/x " + "a" * 40 + " main.zsh",
                         "plugin add good https://example.invalid/x main main.zsh",
@@ -148,7 +172,7 @@ class RuntimeTests(unittest.TestCase):
         for args in [["init", "-q"], ["config", "user.name", "Fixture"],
                      ["config", "user.email", "fixture@example.invalid"]]:
             subprocess.run(["git", "-C", str(plugin), *args], check=True)
-        (plugin / "init.zsh").write_text("typeset -g FIXTURE_LOADED=yes\n")
+        (plugin / "init.zsh").write_text("typeset -g FIXTURE_LOADED=yes\nzshard_plugin_fixture_unload() { unset FIXTURE_LOADED; unfunction zshard_plugin_fixture_unload; }\n")
         subprocess.run(["git", "-C", str(plugin), "add", "."], check=True)
         subprocess.run(["git", "-C", str(plugin), "commit", "-qm", "fixture"], check=True)
         sha = subprocess.check_output(["git", "-C", str(plugin), "rev-parse", "HEAD"], text=True).strip()
@@ -157,6 +181,11 @@ class RuntimeTests(unittest.TestCase):
         result = self.shell.run("zshard use fixture; print $FIXTURE_LOADED; zshard plugin verify fixture")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("yes\nfixture: pinned", result.stdout)
+        lock = self.home / "plugins.lock"
+        result = self.shell.run("zshard use fixture; zshard unload fixture; print ${+FIXTURE_LOADED}; zshard use fixture; print $FIXTURE_LOADED; zshard plugin export > " + shlex.quote(str(lock)) + "; zshard plugin restore " + shlex.quote(str(lock)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.startswith("0\nyes\n"), result.stdout)
+        self.assertEqual(lock.read_text().splitlines()[0], "# zshard.plugins.v1")
         (plugin / "init.zsh").write_text("changed\n")
         self.assertNotEqual(self.shell.run("zshard plugin verify fixture").returncode, 0)
         (plugin / "init.zsh").unlink()
@@ -208,7 +237,7 @@ class RuntimeTests(unittest.TestCase):
             terminal.command("print -s -- " + shlex.quote(candidate))
             self.assertFalse(output.exists())
             terminal.send("print -r -- acc")
-            seen = terminal.read_for(0.15)
+            seen = terminal.until(b"epted", timeout=5)
             self.assertIn(b"epted", seen)
             terminal.send(b"\x06\n")
             terminal.read_for(0.15)
@@ -223,7 +252,7 @@ class RuntimeTests(unittest.TestCase):
             target.write_text("")
             terminal.send("print -r -- unique-comple")
             terminal.send(b"\t")
-            output = terminal.read_for(0.8)
+            output = terminal.until(b"tion-file", timeout=10)
             self.assertIn(b"tion-file", output)
             terminal.send(b"\n")
             terminal.read_for(0.1)

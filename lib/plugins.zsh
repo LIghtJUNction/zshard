@@ -32,6 +32,46 @@ _zshard_plugin() {
         print -r -- "${lock:t:r}"$'\t'"$sha"$'\t'"$entry"
       done
       ;;
+    export)
+      (( $# == 0 )) || { _zshard_error 'plugin export takes no arguments'; return 2; }
+      print -r -- '# zshard.plugins.v1'
+      [[ -d $root && ! -L $root ]] || return 0
+      for lock in "$root"/*.lock(N); do
+        IFS=$'\t' read -r sha url entry extra < "$lock"
+        print -r -- "${lock:t:r}"$'\t'"$sha"$'\t'"$url"$'\t'"$entry"
+      done
+      ;;
+    restore)
+      (( $# == 1 )) && [[ -f $1 ]] || { _zshard_error 'plugin restore requires a lock file'; return 2; }
+      local header row name_from_file
+      local -a records=()
+      local -A seen=()
+      {
+        IFS= read -r header
+        [[ $header == '# zshard.plugins.v1' ]] || { _zshard_error 'unsupported plugin lock format'; return 2; }
+        while IFS= read -r row || [[ -n $row ]]; do
+          [[ -z $row ]] && continue
+          IFS=$'\t' read -r name_from_file sha url entry extra <<< "$row"
+          _zshard_plugin_name "$name_from_file" && [[ $sha == [0-9a-f](#c40) && -n $url && -n $entry && -z $extra ]] ||
+            { _zshard_error 'invalid plugin lock record'; return 2; }
+          [[ -z ${seen[$name_from_file]-} ]] || { _zshard_error 'duplicate plugin lock record'; return 2; }
+          seen[$name_from_file]=1
+          records+=("$row")
+        done
+      } < "$1"
+      for row in "${records[@]}"; do
+        IFS=$'\t' read -r name_from_file sha url entry extra <<< "$row"
+        if [[ -e $root/$name_from_file.lock ]]; then
+          local saved
+          IFS= read -r saved < "$root/$name_from_file.lock"
+          [[ $saved == "$sha"$'\t'"$url"$'\t'"$entry" ]] ||
+            { _zshard_error "installed pin differs: $name_from_file"; return 1; }
+          _zshard_plugin verify "$name_from_file" || return
+        else
+          _zshard_plugin add "$name_from_file" "$url" "$sha" "$entry" || return
+        fi
+      done
+      ;;
     add)
       (( $# == 4 )) || { _zshard_error 'plugin add requires NAME URL FULL_COMMIT_SHA ENTRY_FILE'; return 2; }
       name=$1; url=$2; sha=${(L)3}; entry=$4

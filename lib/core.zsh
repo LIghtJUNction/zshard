@@ -46,6 +46,7 @@ zshard() {
   use NAME                     Load an explicitly installed plugin
   plugin add NAME URL SHA FILE  Install a pinned Git commit; does not load it
   plugin list|verify|remove NAME
+  plugin export|restore FILE   Export or restore reviewed exact pins
   hook|unhook EVENT FUNCTION    Register or remove one owned shell hook
   completions DIR              Register completion files before first Tab
   theme FUNCTION               Set a prompt callback (status, seconds)
