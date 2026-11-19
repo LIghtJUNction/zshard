@@ -94,7 +94,7 @@ _zshard_cache_usable() {
     [[ -e $candidate ]] || continue
     [[ -O $candidate ]] || return 1
     zstat -H metadata -- "$candidate" 2>/dev/null || return 1
-    (( (metadata[mode] & 022) == 0 )) || return 1
+    (( (metadata[mode] & 8#22) == 0 )) || return 1
   done
   return 0
 }

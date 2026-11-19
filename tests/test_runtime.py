@@ -209,6 +209,17 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue((self.home / "cache/zshard").is_dir())
         self.assertEqual((self.home / "cache/zshard").stat().st_mode & 0o777, 0o700)
 
+    def test_secure_completion_dump_is_reused(self):
+        first = self.shell.run("zshard complete", interactive=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        dump = next((self.home / "cache/zshard").glob("zcompdump-*"))
+        with dump.open("a") as output:
+            output.write("\ntypeset -g ZSHARD_TEST_CACHE_REUSED=yes\n")
+        dump.chmod(0o600)
+        result = self.shell.run("zshard complete; print -r -- $ZSHARD_TEST_CACHE_REUSED", interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "yes")
+
     def test_writable_completion_dump_is_not_executed(self):
         first = self.shell.run("zshard complete", interactive=True)
         self.assertEqual(first.returncode, 0, first.stderr)
