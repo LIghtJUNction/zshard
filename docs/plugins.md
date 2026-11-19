@@ -23,7 +23,9 @@ Run `zshard cache warm [COMPLETION_DIR ...]` from the standalone CLI or an exist
 
 ## Local loading
 
-`zshard load FILE` sources the canonical file path once. `defer FILE` runs at the first ZLE editing line. `lazy COMMAND FILE` installs a command wrapper, loads the file once when invoked, then forwards the original argument boundaries. A lazy plugin must define that command or make its external executable available.
+`zshard load FILE` sources the canonical file path once. `defer FILE` queues it for the next ZLE editing line. `lazy COMMAND FILE` installs a command wrapper, loads the file once when invoked, then forwards the original argument boundaries. A lazy plugin must define that command or make its external executable available.
+
+Each deferred batch attempts every queued plugin once, even when another plugin fails. The batch returns its first nonzero status. Plugins queued while that batch runs wait for the next editing line. Failed plugins are not marked as loaded and are not retried automatically; after correcting a failure, use `zshard load FILE` to retry it explicitly. A failure does not undo shell changes already made by that plugin.
 
 Plugins execute with the user's shell privileges. They are explicit trusted configuration. Startup does not search the network or load every installed plugin automatically.
 

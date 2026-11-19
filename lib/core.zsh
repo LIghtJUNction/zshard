@@ -27,9 +27,18 @@ _zshard_lazy_dispatch() {
 
 _zshard_run_deferred() {
   local file
+  local -i first_failure=0 failure=0
   local -a files=("${_ZSHARD_DEFERRED[@]}")
   _ZSHARD_DEFERRED=()
-  for file in "${files[@]}"; do _zshard_source "$file" || return; done
+  for file in "${files[@]}"; do
+    if _zshard_source "$file"; then
+      continue
+    else
+      failure=$?
+      (( first_failure )) || first_failure=$failure
+    fi
+  done
+  return $first_failure
 }
 
 zshard() {

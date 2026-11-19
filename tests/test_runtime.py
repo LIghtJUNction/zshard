@@ -134,6 +134,64 @@ class RuntimeTests(unittest.TestCase):
                                 "_zshard_run_deferred; print $COUNTER")
         self.assertEqual(result.stdout.splitlines(), ["0", "1", "1"])
 
+    def test_deferred_failures_do_not_discard_other_plugins(self):
+        first = self.home / "first-failure.zsh"
+        first.write_text("(( FIRST_TRIES += 1 )); return 7\n")
+        good = self.home / "good.zsh"
+        good.write_text("(( GOOD_COUNT += 1 )); return 0\n")
+        last = self.home / "last-failure.zsh"
+        last.write_text("(( LAST_TRIES += 1 )); return 9\n")
+        queue = "; ".join(f"zshard defer {shlex.quote(str(path))}"
+                          for path in (first, good, last))
+        result = self.shell.run(
+            "typeset -gi FIRST_TRIES=0 GOOD_COUNT=0 LAST_TRIES=0; "
+            + queue + "; "
+            "_zshard_run_deferred; rc=$?; "
+            'print -r -- "first=$rc:$FIRST_TRIES:$GOOD_COUNT:$LAST_TRIES:'
+            '$#_ZSHARD_DEFERRED:$#_ZSHARD_LOADED_FILES"; '
+            "_zshard_run_deferred; rc=$?; "
+            'print -r -- "next=$rc:$FIRST_TRIES:$GOOD_COUNT:$LAST_TRIES:'
+            '$#_ZSHARD_DEFERRED:$#_ZSHARD_LOADED_FILES"; '
+            + f"zshard load {shlex.quote(str(first))}; rc=$?; "
+            'print -r -- "retry=$rc:$FIRST_TRIES:$GOOD_COUNT:$LAST_TRIES:'
+            '$#_ZSHARD_DEFERRED:$#_ZSHARD_LOADED_FILES"'
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            "first=7:1:1:1:0:1",
+            "next=0:1:1:1:0:1",
+            "retry=7:2:1:1:0:1",
+        ])
+
+    def test_deferred_new_work_waits_for_the_next_line(self):
+        later = self.home / "later.zsh"
+        later.write_text("(( LATER_COUNT += 1 )); return 0\n")
+        schedule = self.home / "schedule.zsh"
+        schedule.write_text("(( SCHEDULE_COUNT += 1 )); "
+                            + f"zshard defer {shlex.quote(str(later))}\n")
+        sibling = self.home / "sibling.zsh"
+        sibling.write_text("(( SIBLING_COUNT += 1 )); return 0\n")
+        result = self.shell.run(
+            "typeset -gi SCHEDULE_COUNT=0 LATER_COUNT=0 SIBLING_COUNT=0; "
+            + f"zshard defer {shlex.quote(str(schedule))}; "
+            + f"zshard defer {shlex.quote(str(sibling))}; "
+            "_zshard_run_deferred; rc=$?; "
+            'print -r -- "first=$rc:$SCHEDULE_COUNT:$LATER_COUNT:$SIBLING_COUNT:'
+            '$#_ZSHARD_DEFERRED"; '
+            "_zshard_run_deferred; rc=$?; "
+            'print -r -- "next=$rc:$SCHEDULE_COUNT:$LATER_COUNT:$SIBLING_COUNT:'
+            '$#_ZSHARD_DEFERRED"; '
+            "_zshard_run_deferred; rc=$?; "
+            'print -r -- "empty=$rc:$SCHEDULE_COUNT:$LATER_COUNT:$SIBLING_COUNT:'
+            '$#_ZSHARD_DEFERRED"'
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            "first=0:1:0:1:1",
+            "next=0:1:1:1:0",
+            "empty=0:1:1:1:0",
+        ])
+
     def test_extension_hooks_theme_and_completion_registration(self):
         custom = self.home / "completions"
         custom.mkdir()
