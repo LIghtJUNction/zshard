@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+emulate -LR zsh
+typeset -g ZSHARD_HOME=${0:A:h:h}
+source "$ZSHARD_HOME/zshard.zsh" || exit
+zshard "$@"

@@ -1,0 +1,2 @@
+#compdef zai
+_arguments '1:command:(context connect ask propose help)' '*:argument:_files'
