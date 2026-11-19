@@ -140,7 +140,7 @@ _zshard_cache_compaudit() {
   emulate -L zsh
   _zshard_original_compaudit "$@"
   local -i audit_status=$?
-  local directory relative_base='' first stored
+  local directory relative_base='' stored
   for directory in "$fpath[@]"; do
     [[ $directory != /* && $directory != . ]] && relative_base=$PWD
   done
@@ -154,7 +154,9 @@ _zshard_cache_compaudit() {
     return $audit_status
   fi
   if [[ -r $_zshard_cache_target ]]; then
-    { IFS= read -r first; IFS= read -r stored; } < "$_zshard_cache_target"
+    # zsh's $(<file) reads in blocks; read -r scans a long signature bytewise.
+    stored=$(<"$_zshard_cache_target")
+    stored=${${stored#*$'\n'}%%$'\n'*}
   fi
   if [[ $stored != "# zshard-audit: $_zshard_audit_record" ]]; then
     # A fresh path forces ordinary audited compinit to rebuild. The old cache
@@ -173,7 +175,7 @@ _zshard_audited_compinit() {
   emulate -L zsh
   local -i completion_status=1
   local _zshard_cache_target=$1 _zshard_cache_staging='' _zshard_audit_record=''
-  local cache_header cache_record
+  local cache_record
   autoload -RUz compinit compdump compaudit
   functions -c compdump _zshard_original_compdump || return
   functions -c compaudit _zshard_original_compaudit || {
@@ -189,7 +191,8 @@ _zshard_audited_compinit() {
     completion_status=$?
     if (( completion_status == 0 )) && [[ -n $_zshard_cache_staging ]]; then
       if [[ -f $_zshard_cache_staging ]] && _zshard_cache_usable "$_zshard_cache_staging"; then
-        { IFS= read -r cache_header; IFS= read -r cache_record; } < "$_zshard_cache_staging"
+        cache_record=$(<"$_zshard_cache_staging")
+        cache_record=${${cache_record#*$'\n'}%%$'\n'*}
         if [[ $cache_record == "# zshard-audit: $_zshard_audit_record" ]]; then
           # A stale compiled dump must not override the newly audited source.
           zf_rm -f -- "$_zshard_cache_target.zwc" &&
