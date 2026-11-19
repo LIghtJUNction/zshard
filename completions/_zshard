@@ -1,2 +1,2 @@
 #compdef zshard
-_arguments '1:command:(load defer lazy use unload plugin hook unhook completions theme ai complete doctor version help)' '*:argument:_files'
+_arguments '1:command:(load defer lazy use unload plugin hook unhook completions theme ai cache complete doctor version help)' '*:argument:_files'

@@ -102,7 +102,7 @@ _zshard_cache_usable() {
 _zshard_completion_init() {
   emulate -L zsh
   (( _ZSHARD_COMPLETION_READY )) && return 0
-  local cache=${XDG_CACHE_HOME:-$HOME/.cache}/zshard
+  local cache=${ZSHARD_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/zshard}
   autoload -Uz compinit
   if [[ ! -L $cache ]] && { [[ -d $cache && -O $cache ]] || zf_mkdir -p -m 700 -- "$cache"; }; then
     if _zshard_cache_usable "$cache" "$cache/zcompdump-$ZSH_VERSION" "$cache/zcompdump-$ZSH_VERSION.zwc"; then

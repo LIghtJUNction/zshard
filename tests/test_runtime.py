@@ -209,26 +209,58 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue((self.home / "cache/zshard").is_dir())
         self.assertEqual((self.home / "cache/zshard").stat().st_mode & 0o777, 0o700)
 
+    def test_cli_warms_completion_cache(self):
+        custom = self.home / "suite-completions"
+        custom.mkdir()
+        (custom / "_suite_command").write_text("#compdef suite-command\n_arguments '*:path:_files'\n")
+        cache = self.home / "suite-cache"
+        self.shell.env["ZSHARD_CACHE_DIR"] = str(cache)
+        result = subprocess.run(["zsh", str(ROOT / "bin/zshard"), "cache", "warm", str(custom)],
+                                env=self.shell.env, cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        dump = next(cache.glob("zcompdump-*"))
+        self.assertIn("suite-command", dump.read_text())
+        self.assertFalse((self.home / "cache/zshard").exists())
+
+    def isolated_completion_prefix(self):
+        """Use real system compinit with only private, stable completion inputs."""
+        directory = self.home / "completion-fixture"
+        directory.mkdir(exist_ok=True)
+        locate = (
+            "for name in compinit compaudit compdump compinstall; do "
+            "for directory in $fpath; do "
+            'if [[ -f $directory/$name ]]; then print -r -- "$directory/$name"; break; fi; '
+            "done; done"
+        )
+        files = subprocess.check_output(["zsh", "-f", "-c", locate], env=self.shell.env, text=True).splitlines()
+        self.assertEqual(len(files), 4)
+        for name in files:
+            shutil.copyfile(name, directory / Path(name).name)
+        (directory / "_fixture").write_text("#compdef fixture\n_arguments '*:path:_files'\n")
+        return "fpath=(" + shlex.quote(str(directory)) + "); "
+
     def test_secure_completion_dump_is_reused(self):
-        first = self.shell.run("zshard complete", interactive=True)
+        prefix = self.isolated_completion_prefix()
+        first = self.shell.run(prefix + "zshard complete", interactive=True)
         self.assertEqual(first.returncode, 0, first.stderr)
         dump = next((self.home / "cache/zshard").glob("zcompdump-*"))
         with dump.open("a") as output:
             output.write("\ntypeset -g ZSHARD_TEST_CACHE_REUSED=yes\n")
         dump.chmod(0o600)
-        result = self.shell.run("zshard complete; print -r -- $ZSHARD_TEST_CACHE_REUSED", interactive=True)
+        result = self.shell.run(prefix + "zshard complete; print -r -- $ZSHARD_TEST_CACHE_REUSED", interactive=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "yes")
 
     def test_writable_completion_dump_is_not_executed(self):
-        first = self.shell.run("zshard complete", interactive=True)
+        prefix = self.isolated_completion_prefix()
+        first = self.shell.run(prefix + "zshard complete", interactive=True)
         self.assertEqual(first.returncode, 0, first.stderr)
         dump = next((self.home / "cache/zshard").glob("zcompdump-*"))
         marker = self.home / "unsafe-cache-executed"
         with dump.open("a") as output:
             output.write("\nprint unsafe > " + shlex.quote(str(marker)) + "\n")
         dump.chmod(0o666)
-        result = self.shell.run("zshard complete", interactive=True)
+        result = self.shell.run(prefix + "zshard complete", interactive=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(marker.exists())
 

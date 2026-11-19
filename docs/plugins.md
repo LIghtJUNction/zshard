@@ -11,10 +11,15 @@ Set options before sourcing `zshard.zsh`. The framework can be sourced twice wit
 | ZSHARD_HISTORY_SCAN | 200 | Maximum history events inspected for a suggestion |
 | ZSHARD_HIGHLIGHT | 1 | `0` disables command-token highlighting |
 | ZSHARD_SHELL_INTEGRATION | 0 | `1` enables OSC 7 cwd and OSC 133 command boundaries |
+| ZSHARD_CACHE_DIR | XDG_CACHE_HOME/zshard | Dedicated completion cache directory |
 | ZSHARD_PLUGIN_DIR | XDG_DATA_HOME/zshard/plugins | Installed plugin checkouts and locks |
 | HISTFILE | XDG_STATE_HOME/zshard/history | Existing user value is preserved |
 
 XDG defaults follow the usual `~/.local/share`, `~/.local/state` and `~/.cache` locations. Completion uses a private cache directory and runs `compinit -i` for every new shell; insecure completion directories are skipped. It never uses `compinit -C` to bypass the audit. Dump files and compiled dumps must be owned by the current user, not symlinks, and not writable by group or others; unsafe caches are bypassed.
+
+## Warm completion during installation
+
+Run `zshard cache warm [COMPLETION_DIR ...]` from the standalone CLI or an existing shell to prepare the audited completion dump. Installers can call this after installing files, so the first interactive Tab uses the warm cache. This operation performs work explicitly during installation; normal startup still defers completion. Pass extra completion directories in the same order used by the interactive configuration. `ZSHARD_CACHE_DIR` can keep a suite cache separate. Added or removed completion files can require a later rebuild.
 
 ## Local loading
 
@@ -66,7 +71,7 @@ ZLE integration uses `add-zle-hook-widget`. Its highlight entries carry a `memo=
 
 ## AI contracts
 
-`zai context` produces one `zshard.context.v1` JSON object. Its fields are `cwd`, `shell`, `shell_version`, `last_exit`, `capabilities`, `history_included` and `environment_included`. It does not read files or emit the previous command. The current directory can itself be private; sharing happens only when the user explicitly runs a provider or ssmcp.
+`zai context` produces one `zshard.context.v1` JSON object. Its fields are `cwd`, `shell`, `shell_version`, `last_exit`, `capabilities`, `history_included` and `environment_included`. It does not read files or emit the previous command. In a fresh standalone process, `last_exit` starts at 0; the active interactive shell supplies its recorded previous status. The current directory can itself be private; sharing happens only when the user explicitly runs a provider or ssmcp.
 
 `zai connect` forwards arguments to the actual `ssmcp` binary. It does not start a model. `ZSHARD_AI_COMMAND` must be an array; `zai ask` passes each element as an argv entry and sends context plus the request on stdin. It never evaluates strings as shell code.
 

@@ -52,6 +52,7 @@ zshard() {
   theme FUNCTION               Set a prompt callback (status, seconds)
   unload NAME                  Run an installed plugin cleanup function
   ai ACTION                    Run a zai action from the standalone CLI
+  cache warm [DIR ...]         Prepare audited completion cache explicitly
   complete                     Initialize audited completion now
   doctor                       Show runtime dependencies and modes
   version                      Print version
@@ -78,6 +79,25 @@ zshard() {
       _zshard_ensure_plugins || return
       _zshard_plugin_entry "$1" || return
       _zshard_source "$REPLY"
+      ;;
+    cache)
+      [[ ${1-} == warm ]] || { _zshard_error 'cache requires: warm [COMPLETION_DIR ...]'; return 2; }
+      shift
+      local -a directories=()
+      for file in "$@"; do
+        [[ -d $file ]] || { _zshard_error "missing completion directory: $file"; return 2; }
+        directories+=("${file:A}")
+      done
+      if (( $+functions[_zshard_completion_init] )); then
+        if (( ${#directories} )); then
+          fpath=("${directories[@]}" "${fpath[@]}")
+          _ZSHARD_COMPLETION_READY=0
+        fi
+        _zshard_completion_init
+      else
+        ZSHARD_HOME=$ZSHARD_HOME ZSHARD_CACHE_DIR=${ZSHARD_CACHE_DIR-} HISTFILE=/dev/null ZSHARD_PROMPT=off \
+          command zsh -d -f -i -c 'fpath=("$@" "${fpath[@]}"); source "$ZSHARD_HOME/zshard.zsh" && zshard complete' -- "${directories[@]}"
+      fi
       ;;
     ai) zai "$@";;
     hook|unhook)
