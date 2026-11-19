@@ -567,6 +567,51 @@ class RuntimeTests(unittest.TestCase):
         finally:
             terminal.close()
 
+
+    def test_suggestion_cache_tracks_input_history_and_scan_limit(self):
+        history = self.home / "history-fixture"
+        history.write_text("print alpha-old\nprint beta-other\nprint unrelated\n")
+        recent = self.home / "recent-fixture"
+        recent.write_text("print alpha-new\nprint unrelated-new\n")
+        result = self.shell.run(
+            "fc -R " + shlex.quote(str(history)) + "; "
+            "ZSHARD_HISTORY_SCAN=1; BUFFER='print alpha'; CURSOR=$#BUFFER; "
+            '_zshard_redraw; print -r -- "small:$POSTDISPLAY"; '
+            "ZSHARD_HISTORY_SCAN=200; "
+            '_zshard_redraw; print -r -- "expanded:$POSTDISPLAY"; '
+            '_zshard_redraw; print -r -- "repeated:$POSTDISPLAY"; '
+            "BUFFER='print beta'; CURSOR=$#BUFFER; "
+            '_zshard_redraw; print -r -- "changed:$POSTDISPLAY"; '
+            "BUFFER='print alpha'; CURSOR=$#BUFFER; _zshard_redraw; "
+            + "fc -R " + shlex.quote(str(recent)) + "; "
+            '_zshard_redraw; print -r -- "history:$POSTDISPLAY"',
+            interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            "small:", "expanded:-old", "repeated:-old",
+            "changed:-other", "history:-new",
+        ])
+
+    def test_cached_suggestion_respects_cursor_and_foreign_display(self):
+        history = self.home / "history-fixture"
+        history.write_text("print alpha-result\nprint unrelated\n")
+        result = self.shell.run(
+            "fc -R " + shlex.quote(str(history)) + "; "
+            "BUFFER='print alpha'; CURSOR=$#BUFFER; "
+            '_zshard_redraw; print -r -- "end:$POSTDISPLAY"; '
+            'CURSOR=1; _zshard_redraw; print -r -- "middle:$POSTDISPLAY"; '
+            'CURSOR=$#BUFFER; _zshard_redraw; print -r -- "back:$POSTDISPLAY"; '
+            "POSTDISPLAY=other-widget; "
+            '_zshard_redraw; print -r -- "foreign:$POSTDISPLAY"; '
+            "POSTDISPLAY=''; ZSHARD_SUGGESTIONS=0; "
+            '_zshard_redraw; print -r -- "disabled:$POSTDISPLAY"',
+            interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            "end:-result", "middle:", "back:-result",
+            "foreign:other-widget", "disabled:",
+        ])
+
     def test_prompt_escapes_git_branch(self):
         result = self.shell.run("_ZSHARD_GIT_DIR=" + shlex.quote(str(self.home)) +
                                 "; _zshard_git_branch; print -r -- $_ZSHARD_BRANCH", interactive=True)

@@ -96,7 +96,7 @@ Before the first Tab, call `zshard completions DIRECTORY` to add a directory of 
 
 Call `zshard theme FUNCTION` to use a prompt callback. The callback receives the last exit status and elapsed whole seconds, and assigns PROMPT and RPROMPT. The [compact theme](../examples/custom-theme.zsh) demonstrates this. Keep external commands out of prompt callbacks if you want the default latency contract.
 
-ZLE integration uses `add-zle-hook-widget`. Its highlight entries carry a `memo=zshard` marker, so unrelated regions survive redraws. Suggestions yield when another widget owns POSTDISPLAY. Right and Ctrl-F accept a suggestion at the end of the buffer; otherwise they move forward normally.
+ZLE integration uses `add-zle-hook-widget`. Its highlight entries carry a `memo=zshard` marker, so unrelated regions survive redraws. Suggestions yield when another widget owns POSTDISPLAY. Right and Ctrl-F accept a suggestion at the end of the buffer; otherwise they move forward normally. Repeated redraws reuse the previous history result, including an empty result, only while the input, history event and scan limit remain unchanged. Finishing an editing line drops that cache. Changed input still performs the bounded history search.
 
 ## AI contracts
 

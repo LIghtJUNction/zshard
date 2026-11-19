@@ -1,5 +1,7 @@
 typeset -gi _ZSHARD_LAST_EXIT=0 _ZSHARD_STARTED=0 _ZSHARD_COMPLETION_READY=0
 typeset -g _ZSHARD_GIT_DIR='' _ZSHARD_GIT_ROOT='' _ZSHARD_BRANCH='' _ZSHARD_POSTDISPLAY='' _ZSHARD_SUGGESTION=''
+typeset -g _ZSHARD_HISTORY_BUFFER='' _ZSHARD_HISTORY_SUFFIX='' _ZSHARD_HISTORY_LIMIT=''
+typeset -gi _ZSHARD_HISTORY_EVENT=-1
 
 # Shared prompt, editor and completion colors; zsh supports names, indices and RGB.
 typeset -g ZSHARD_COLOR_PATH="${ZSHARD_COLOR_PATH:-#e8ded2}"
@@ -294,18 +296,32 @@ _zshard_redraw() {
   fi
   if [[ ${ZSHARD_SUGGESTIONS:-1} != 1 || -z $BUFFER || -n $POSTDISPLAY ||
         ${#BUFFER} -gt 400 || $CURSOR -ne ${#BUFFER} || $BUFFER == *$'\n'* ]]; then return 0; fi
-  event=$HISTCMD
-  while (( event > 0 && tries < ${ZSHARD_HISTORY_SCAN:-200} )); do
-    (( --event, ++tries ))
-    candidate=${history[$event]-}
-    if [[ $candidate == "$BUFFER"* && $candidate != "$BUFFER" && $candidate != *$'\n'* ]]; then
-      _ZSHARD_SUGGESTION=${candidate[${#BUFFER}+1,-1]}
-      POSTDISPLAY=$_ZSHARD_SUGGESTION
-      _ZSHARD_POSTDISPLAY=$POSTDISPLAY
-      region_highlight+=("${#BUFFER} $(( ${#BUFFER} + ${#POSTDISPLAY} )) fg=$ZSHARD_COLOR_SUGGESTION memo=zshard")
-      break
-    fi
-  done
+  # ZLE can redraw an unchanged buffer more than once. Cache both hits and
+  # misses; a different input, history event or scan limit recomputes the result.
+  if [[ $BUFFER == $_ZSHARD_HISTORY_BUFFER &&
+        $HISTCMD == $_ZSHARD_HISTORY_EVENT &&
+        ${ZSHARD_HISTORY_SCAN:-200} == $_ZSHARD_HISTORY_LIMIT ]]; then
+    _ZSHARD_SUGGESTION=$_ZSHARD_HISTORY_SUFFIX
+  else
+    event=$HISTCMD
+    while (( event > 0 && tries < ${ZSHARD_HISTORY_SCAN:-200} )); do
+      (( --event, ++tries ))
+      candidate=${history[$event]-}
+      if [[ $candidate == "$BUFFER"* && $candidate != "$BUFFER" && $candidate != *$'\n'* ]]; then
+        _ZSHARD_SUGGESTION=${candidate[${#BUFFER}+1,-1]}
+        break
+      fi
+    done
+    _ZSHARD_HISTORY_BUFFER=$BUFFER
+    _ZSHARD_HISTORY_EVENT=$HISTCMD
+    _ZSHARD_HISTORY_LIMIT=${ZSHARD_HISTORY_SCAN:-200}
+    _ZSHARD_HISTORY_SUFFIX=$_ZSHARD_SUGGESTION
+  fi
+  if [[ -n $_ZSHARD_SUGGESTION ]]; then
+    POSTDISPLAY=$_ZSHARD_SUGGESTION
+    _ZSHARD_POSTDISPLAY=$POSTDISPLAY
+    region_highlight+=("${#BUFFER} $(( ${#BUFFER} + ${#POSTDISPLAY} )) fg=$ZSHARD_COLOR_SUGGESTION memo=zshard")
+  fi
   return 0
 }
 
@@ -321,6 +337,7 @@ _zshard_forward() {
 _zshard_line_finish() {
   [[ $POSTDISPLAY == $_ZSHARD_POSTDISPLAY ]] && POSTDISPLAY=''
   _ZSHARD_POSTDISPLAY='' _ZSHARD_SUGGESTION=''
+  _ZSHARD_HISTORY_BUFFER='' _ZSHARD_HISTORY_SUFFIX='' _ZSHARD_HISTORY_EVENT=-1
   region_highlight=("${(@)region_highlight:#*memo=zshard}")
   return 0
 }
