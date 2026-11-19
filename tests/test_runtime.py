@@ -108,7 +108,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertNotIn("must-not-be-exported", result.stdout)
 
     def test_json_escaping(self):
-        result = self.shell.run("""_zshard_json_string $'a"b\\\\c\\n\\t\\x01中文'""")
+        result = self.shell.run("""zai context >/dev/null; _zshard_json_string $'a"b\\\\c\\n\\t\\x01中文'""")
         self.assertEqual(json.loads(result.stdout), 'a"b\\c\n\t\x01中文')
 
     def test_repeat_source_and_hook_coexistence(self):
@@ -208,6 +208,18 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(result.stdout.splitlines(), ["0", "1", "1"])
         self.assertTrue((self.home / "cache/zshard").is_dir())
         self.assertEqual((self.home / "cache/zshard").stat().st_mode & 0o777, 0o700)
+
+    def test_writable_completion_dump_is_not_executed(self):
+        first = self.shell.run("zshard complete", interactive=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        dump = next((self.home / "cache/zshard").glob("zcompdump-*"))
+        marker = self.home / "unsafe-cache-executed"
+        with dump.open("a") as output:
+            output.write("\nprint unsafe > " + shlex.quote(str(marker)) + "\n")
+        dump.chmod(0o666)
+        result = self.shell.run("zshard complete", interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(marker.exists())
 
     def test_prompt_escapes_git_branch(self):
         result = self.shell.run("_ZSHARD_GIT_DIR=" + shlex.quote(str(self.home)) +

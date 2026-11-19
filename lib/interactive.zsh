@@ -84,13 +84,28 @@ _zshard_precmd() {
   return 0
 }
 
+_zshard_cache_usable() {
+  emulate -L zsh
+  zmodload -F zsh/stat b:zstat || return 1
+  local candidate
+  local -A metadata
+  for candidate in "$@"; do
+    [[ -L $candidate ]] && return 1
+    [[ -e $candidate ]] || continue
+    [[ -O $candidate ]] || return 1
+    zstat -H metadata -- "$candidate" 2>/dev/null || return 1
+    (( (metadata[mode] & 022) == 0 )) || return 1
+  done
+  return 0
+}
+
 _zshard_completion_init() {
   emulate -L zsh
   (( _ZSHARD_COMPLETION_READY )) && return 0
   local cache=${XDG_CACHE_HOME:-$HOME/.cache}/zshard
   autoload -Uz compinit
   if [[ ! -L $cache ]] && { [[ -d $cache && -O $cache ]] || zf_mkdir -p -m 700 -- "$cache"; }; then
-    if [[ -O $cache && ! -L $cache && ! -L $cache/zcompdump-$ZSH_VERSION ]]; then
+    if _zshard_cache_usable "$cache" "$cache/zcompdump-$ZSH_VERSION" "$cache/zcompdump-$ZSH_VERSION.zwc"; then
       zf_chmod 700 "$cache" || return
       # A new audit runs for each shell, including when a dump already exists.
       compinit -i -d "$cache/zcompdump-$ZSH_VERSION" || return

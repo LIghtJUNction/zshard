@@ -75,6 +75,7 @@ zshard() {
       ;;
     use)
       (( $# == 1 )) || { _zshard_error 'use requires NAME'; return 2; }
+      _zshard_ensure_plugins || return
       _zshard_plugin_entry "$1" || return
       _zshard_source "$REPLY"
       ;;
@@ -104,6 +105,7 @@ zshard() {
     unload)
       (( $# == 1 )) || { _zshard_error 'unload requires an installed plugin NAME'; return 2; }
       name=$1
+      _zshard_ensure_plugins || return
       _zshard_plugin_entry "$name" || return
       file=$REPLY
       local cleanup=zshard_plugin_${name//-/_}_unload
@@ -113,7 +115,7 @@ zshard() {
       (( index )) && _ZSHARD_LOADED_FILES[index]=()
       return 0
       ;;
-    plugin) _zshard_plugin "$@";;
+    plugin) _zshard_ensure_plugins && _zshard_plugin "$@";;
     complete)
       (( $+functions[_zshard_completion_init] )) || { _zshard_error 'completion requires an interactive shell'; return 1; }
       _zshard_completion_init

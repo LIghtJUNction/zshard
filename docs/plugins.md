@@ -14,7 +14,7 @@ Set options before sourcing `zshard.zsh`. The framework can be sourced twice wit
 | ZSHARD_PLUGIN_DIR | XDG_DATA_HOME/zshard/plugins | Installed plugin checkouts and locks |
 | HISTFILE | XDG_STATE_HOME/zshard/history | Existing user value is preserved |
 
-XDG defaults follow the usual `~/.local/share`, `~/.local/state` and `~/.cache` locations. Completion uses a private cache directory and runs `compinit -i` for every new shell; insecure completion directories are skipped. It never uses `compinit -C` to bypass the audit.
+XDG defaults follow the usual `~/.local/share`, `~/.local/state` and `~/.cache` locations. Completion uses a private cache directory and runs `compinit -i` for every new shell; insecure completion directories are skipped. It never uses `compinit -C` to bypass the audit. Dump files and compiled dumps must be owned by the current user, not symlinks, and not writable by group or others; unsafe caches are bypassed.
 
 ## Local loading
 
