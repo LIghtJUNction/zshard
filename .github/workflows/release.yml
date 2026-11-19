@@ -17,6 +17,8 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y zsh strace
       - run: python3 scripts/diagnose_completion.py
       - run: make check
+      - name: Check ownership changes after warming
+        run: sudo python3 tests/test_runtime.py RuntimeTests.test_changed_completion_file_ownership_invalidates_cache
       - name: Package the exact tag
         run: |
           version=$(cat VERSION)

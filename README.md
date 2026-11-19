@@ -15,7 +15,7 @@ Add that source line to your zsh configuration when ready. Remove the line to un
 
 The prompt reads Git's HEAD directly. It shows the directory, branch, exit status and slow-command duration. There is no prompt subprocess, network request, background watcher or required icon font. A real process trace tests that contract.
 
-Completion initializes on the first Tab, with zsh's security audit. History suggestions inspect a bounded recent window; Right or Ctrl-F accepts the text. Highlighting recognizes the first command token. This is a small editor integration, not a full shell grammar checker.
+Completion initializes on the first Tab, with zsh's security audit. [Cache validation](docs/completion-cache.md) checks the current completion inputs and audit exclusions before reusing a dump. History suggestions inspect a bounded recent window; Right or Ctrl-F accepts the text. Highlighting recognizes the first command token. This is a small editor integration, not a full shell grammar checker.
 
 ~~~zsh
 # Set before source:

@@ -25,7 +25,7 @@ def main():
             output.write("\ntypeset -g ZSHARD_DIAGNOSTIC_CACHE=yes\n")
         dump.chmod(0o600)
         probe = shell(
-            'functions[_zshard_completion_init]=${functions[_zshard_completion_init]//compinit -i/compinit -i -w}; '
+            'functions[_zshard_audited_compinit]=${functions[_zshard_audited_compinit]//compinit -i/compinit -i -w}; '
             '_zshard_cache_usable "$ZSHARD_CACHE_DIR" "$ZSHARD_CACHE_DIR/zcompdump-$ZSH_VERSION"; '
             'print -r -- "cache_guard=$?"; zshard complete; '
             'print -r -- "reused=${ZSHARD_DIAGNOSTIC_CACHE:-no}"'

@@ -1,0 +1,135 @@
+{
+  "schema": "zshard.completion-regression.v1",
+  "environment": {
+    "distribution": "Ubuntu 24.04",
+    "zsh_package": "5.9-6ubuntu2",
+    "container_network": "none during replay"
+  },
+  "baseline_tag": "v0.1.1",
+  "baseline_foreign_directory": {
+    "uid": 0,
+    "root": "/audit/baseline-v0.1.1",
+    "interactive_sha256": "01f7fa78ebcdb7112d37f693d4eaf2c7479054f7a2dff0ab4f696aa1cae35875",
+    "first": {
+      "stdout": [],
+      "stderr": [
+        "TRACE audit raw_count=968 dirs=/audit/baseline-v0.1.1/completions,/audit/baseline-v0.1.1 files=/audit/baseline-v0.1.1/completions/_zai,/audit/baseline-v0.1.1/completions/_zshard",
+        "TRACE init pruned_count=968 secure=yes fpath=<TEMP>/functions,/usr/local/share/zsh/site-functions,/usr/share/zsh/vendor-functions,/usr/share/zsh/vendor-completions,/usr/share/zsh/functions/Calendar,/usr/share/zsh/functions/Chpwd,/usr/share/zsh/functions/Completion,/usr/share/zsh/functions/Completion/AIX,/usr/share/zsh/functions/Completion/BSD,/usr/share/zsh/functions/Completion/Base,/usr/share/zsh/functions/Completion/Cygwin,/usr/share/zsh/functions/Completion/Darwin,/usr/share/zsh/functions/Completion/Debian,/usr/share/zsh/functions/Completion/Linux,/usr/share/zsh/functions/Completion/Mandriva,/usr/share/zsh/functions/Completion/Redhat,/usr/share/zsh/functions/Completion/Solaris,/usr/share/zsh/functions/Completion/Unix,/usr/share/zsh/functions/Completion/X,/usr/share/zsh/functions/Completion/Zsh,/usr/share/zsh/functions/Completion/openSUSE,/usr/share/zsh/functions/Exceptions,/usr/share/zsh/functions/MIME,/usr/share/zsh/functions/Math,/usr/share/zsh/functions/Misc,/usr/share/zsh/functions/Newuser,/usr/share/zsh/functions/Prompts,/usr/share/zsh/functions/TCP,/usr/share/zsh/functions/VCS_Info,/usr/share/zsh/functions/VCS_Info/Backends,/usr/share/zsh/functions/Zftp,/usr/share/zsh/functions/Zle",
+        "No existing compdump file found, regenerating",
+        "TRACE dump count=966 dirs= files="
+      ]
+    },
+    "second": {
+      "stdout": [],
+      "stderr": [
+        "TRACE audit raw_count=968 dirs=/audit/baseline-v0.1.1/completions,/audit/baseline-v0.1.1 files=/audit/baseline-v0.1.1/completions/_zai,/audit/baseline-v0.1.1/completions/_zshard",
+        "TRACE init pruned_count=968 secure=yes fpath=<TEMP>/functions,/usr/local/share/zsh/site-functions,/usr/share/zsh/vendor-functions,/usr/share/zsh/vendor-completions,/usr/share/zsh/functions/Calendar,/usr/share/zsh/functions/Chpwd,/usr/share/zsh/functions/Completion,/usr/share/zsh/functions/Completion/AIX,/usr/share/zsh/functions/Completion/BSD,/usr/share/zsh/functions/Completion/Base,/usr/share/zsh/functions/Completion/Cygwin,/usr/share/zsh/functions/Completion/Darwin,/usr/share/zsh/functions/Completion/Debian,/usr/share/zsh/functions/Completion/Linux,/usr/share/zsh/functions/Completion/Mandriva,/usr/share/zsh/functions/Completion/Redhat,/usr/share/zsh/functions/Completion/Solaris,/usr/share/zsh/functions/Completion/Unix,/usr/share/zsh/functions/Completion/X,/usr/share/zsh/functions/Completion/Zsh,/usr/share/zsh/functions/Completion/openSUSE,/usr/share/zsh/functions/Exceptions,/usr/share/zsh/functions/MIME,/usr/share/zsh/functions/Math,/usr/share/zsh/functions/Misc,/usr/share/zsh/functions/Newuser,/usr/share/zsh/functions/Prompts,/usr/share/zsh/functions/TCP,/usr/share/zsh/functions/VCS_Info,/usr/share/zsh/functions/VCS_Info/Backends,/usr/share/zsh/functions/Zftp,/usr/share/zsh/functions/Zle",
+        "Loading dump file skipped, regenerating because: number of files in dump 966 differ from files found in $fpath 968",
+        "TRACE dump count=966 dirs= files="
+      ]
+    },
+    "before": {
+      "mtime_ns": 1795117362419017496,
+      "sha256": "8e4696aff261ba011fb2f1caa4ffd7f5157cb555a88136e46fac444b5a12f2ea",
+      "header": "#files: 966\tversion: 5.9"
+    },
+    "after": {
+      "mtime_ns": 1795117362683022780,
+      "sha256": "8e4696aff261ba011fb2f1caa4ffd7f5157cb555a88136e46fac444b5a12f2ea",
+      "header": "#files: 966\tversion: 5.9"
+    },
+    "reused": false
+  },
+  "patched_foreign_directory": {
+    "uid": 0,
+    "root": "/audit/candidate-signature",
+    "interactive_sha256": "947c9301ec23bbf23a6d03777ee043a190bc5e163bc38b644ceeac57315f8097",
+    "first": {
+      "stdout": [],
+      "stderr": [
+        "TRACE audit raw_count=968 dirs=/audit/candidate-signature/completions,/audit/candidate-signature files=/audit/candidate-signature/completions/_zai,/audit/candidate-signature/completions/_zshard",
+        "TRACE init pruned_count=968 secure=yes fpath=<TEMP>/functions,/usr/local/share/zsh/site-functions,/usr/share/zsh/vendor-functions,/usr/share/zsh/vendor-completions,/usr/share/zsh/functions/Calendar,/usr/share/zsh/functions/Chpwd,/usr/share/zsh/functions/Completion,/usr/share/zsh/functions/Completion/AIX,/usr/share/zsh/functions/Completion/BSD,/usr/share/zsh/functions/Completion/Base,/usr/share/zsh/functions/Completion/Cygwin,/usr/share/zsh/functions/Completion/Darwin,/usr/share/zsh/functions/Completion/Debian,/usr/share/zsh/functions/Completion/Linux,/usr/share/zsh/functions/Completion/Mandriva,/usr/share/zsh/functions/Completion/Redhat,/usr/share/zsh/functions/Completion/Solaris,/usr/share/zsh/functions/Completion/Unix,/usr/share/zsh/functions/Completion/X,/usr/share/zsh/functions/Completion/Zsh,/usr/share/zsh/functions/Completion/openSUSE,/usr/share/zsh/functions/Exceptions,/usr/share/zsh/functions/MIME,/usr/share/zsh/functions/Math,/usr/share/zsh/functions/Misc,/usr/share/zsh/functions/Newuser,/usr/share/zsh/functions/Prompts,/usr/share/zsh/functions/TCP,/usr/share/zsh/functions/VCS_Info,/usr/share/zsh/functions/VCS_Info/Backends,/usr/share/zsh/functions/Zftp,/usr/share/zsh/functions/Zle",
+        "TRACE dump count=966 dirs= files="
+      ]
+    },
+    "second": {
+      "stdout": [],
+      "stderr": [
+        "TRACE audit raw_count=968 dirs=/audit/candidate-signature/completions,/audit/candidate-signature files=/audit/candidate-signature/completions/_zai,/audit/candidate-signature/completions/_zshard",
+        "TRACE init pruned_count=968 secure=yes fpath=<TEMP>/functions,/usr/local/share/zsh/site-functions,/usr/share/zsh/vendor-functions,/usr/share/zsh/vendor-completions,/usr/share/zsh/functions/Calendar,/usr/share/zsh/functions/Chpwd,/usr/share/zsh/functions/Completion,/usr/share/zsh/functions/Completion/AIX,/usr/share/zsh/functions/Completion/BSD,/usr/share/zsh/functions/Completion/Base,/usr/share/zsh/functions/Completion/Cygwin,/usr/share/zsh/functions/Completion/Darwin,/usr/share/zsh/functions/Completion/Debian,/usr/share/zsh/functions/Completion/Linux,/usr/share/zsh/functions/Completion/Mandriva,/usr/share/zsh/functions/Completion/Redhat,/usr/share/zsh/functions/Completion/Solaris,/usr/share/zsh/functions/Completion/Unix,/usr/share/zsh/functions/Completion/X,/usr/share/zsh/functions/Completion/Zsh,/usr/share/zsh/functions/Completion/openSUSE,/usr/share/zsh/functions/Exceptions,/usr/share/zsh/functions/MIME,/usr/share/zsh/functions/Math,/usr/share/zsh/functions/Misc,/usr/share/zsh/functions/Newuser,/usr/share/zsh/functions/Prompts,/usr/share/zsh/functions/TCP,/usr/share/zsh/functions/VCS_Info,/usr/share/zsh/functions/VCS_Info/Backends,/usr/share/zsh/functions/Zftp,/usr/share/zsh/functions/Zle"
+      ]
+    },
+    "before": {
+      "mtime_ns": 1795117917843706081,
+      "sha256": "25266e05f141e4d576b5866997c8000e7f51a6cd5c791d871210d2464af0e9e5",
+      "header": "#files: 968\tversion: 5.9"
+    },
+    "after": {
+      "mtime_ns": 1795117917843706081,
+      "sha256": "25266e05f141e4d576b5866997c8000e7f51a6cd5c791d871210d2464af0e9e5",
+      "header": "#files: 968\tversion: 5.9"
+    },
+    "reused": true
+  },
+  "baseline_ownership": {
+    "source": "/audit/baseline-v0.1.1",
+    "first": {
+      "stdout": [
+        "one=_audit_one two=_audit_two"
+      ],
+      "stderr": []
+    },
+    "second": {
+      "stdout": [
+        "one=_audit_one two=_audit_two"
+      ],
+      "stderr": []
+    },
+    "header_before": "#files: 970\tversion: 5.9",
+    "header_after": "#files: 970\tversion: 5.9",
+    "unsafe_marker_executed": true,
+    "marker_text": "unsafe_one\nunsafe_two\n"
+  },
+  "patched_ownership": {
+    "source": "/audit/candidate-signature",
+    "mode": "ownership",
+    "first": {
+      "stdout": [
+        "one=_audit_one two=_audit_two"
+      ],
+      "stderr": []
+    },
+    "second": {
+      "stdout": [
+        "third=",
+        "one= two="
+      ],
+      "stderr": []
+    },
+    "header_before": "#files: 970\tversion: 5.9",
+    "header_after": "#files: 970\tversion: 5.9",
+    "unsafe_marker_executed": false,
+    "marker_text": null
+  },
+  "patched_same_count_rename": {
+    "source": "/audit/candidate-signature",
+    "mode": "rename",
+    "first": {
+      "stdout": [
+        "one=_audit_one two=_audit_two"
+      ],
+      "stderr": []
+    },
+    "second": {
+      "stdout": [
+        "third=_audit_three",
+        "one=_audit_one two="
+      ],
+      "stderr": []
+    },
+    "header_before": "#files: 970\tversion: 5.9",
+    "header_after": "#files: 970\tversion: 5.9",
+    "unsafe_marker_executed": false,
+    "marker_text": null
+  }
+}

@@ -2,7 +2,7 @@
 [[ -n ${ZSH_VERSION-} ]] || return 1
 [[ -n ${_ZSHARD_LOADED-} ]] && return 0
 typeset -g ZSHARD_HOME=${ZSHARD_HOME:-${${(%):-%N}:A:h}}
-typeset -g ZSHARD_VERSION=0.1.1
+typeset -g ZSHARD_VERSION=0.1.2
 typeset -g _ZSHARD_LOADED=1
 source "$ZSHARD_HOME/lib/core.zsh" || { unset _ZSHARD_LOADED; return 1; }
 _zshard_ensure_plugins() {

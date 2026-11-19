@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 import pty
+import pwd
+import grp
 import re
 import select
 import shlex
@@ -221,6 +223,13 @@ class RuntimeTests(unittest.TestCase):
         dump = next(cache.glob("zcompdump-*"))
         self.assertIn("suite-command", dump.read_text())
         self.assertFalse((self.home / "cache/zshard").exists())
+        prepared = (dump.stat().st_mtime_ns, dump.read_bytes())
+        result = self.shell.run(
+            'fpath=("$ZSHARD_HOME/completions" ' + shlex.quote(str(custom)) + ' "$fpath[@]"); '
+            "zshard complete; print -r -- $_comps[suite-command]", interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "_suite_command")
+        self.assertEqual((dump.stat().st_mtime_ns, dump.read_bytes()), prepared)
 
     def isolated_completion_prefix(self):
         """Use real system compinit with only private, stable completion inputs."""
@@ -250,6 +259,165 @@ class RuntimeTests(unittest.TestCase):
         result = self.shell.run(prefix + "zshard complete; print -r -- $ZSHARD_TEST_CACHE_REUSED", interactive=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "yes")
+
+    def test_symlink_completion_cache_reuse_preserves_audit(self):
+        prefix = self.isolated_completion_prefix()
+        actual = self.home / "actual-completions"
+        actual.mkdir()
+        (actual / "_linked").write_text("#compdef linked\n")
+        linked = self.home / "linked-completions"
+        linked.symlink_to(actual, target_is_directory=True)
+        unsafe = self.home / "unsafe-completions"
+        unsafe.mkdir()
+        (unsafe / "_unsafe").write_text("#compdef unsafe\n")
+        unsafe.chmod(0o777)
+        prefix += "fpath+=(" + shlex.quote(str(linked)) + " " + shlex.quote(str(unsafe)) + "); "
+        probe = "zshard complete; print -r -- $+_comps[linked] $+_comps[unsafe]"
+        first = self.shell.run(prefix + probe, interactive=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(first.stdout.strip(), "1 0")
+        dump = next((self.home / "cache/zshard").glob("zcompdump-*"))
+        prepared = (dump.stat().st_mtime_ns, dump.read_bytes())
+        second = self.shell.run(prefix + probe, interactive=True)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(second.stdout.strip(), "1 0")
+        self.assertEqual((dump.stat().st_mtime_ns, dump.read_bytes()), prepared)
+
+        # A newly unsafe target must be rejected even when a cache exists.
+        actual.chmod(0o777)
+        rejected = self.shell.run(prefix + probe, interactive=True)
+        self.assertEqual(rejected.returncode, 0, rejected.stderr)
+        self.assertEqual(rejected.stdout.strip(), "0 0")
+        self.assertNotEqual(dump.read_bytes(), prepared[1])
+
+    def test_completion_file_set_changes_invalidate_cache(self):
+        prefix = self.isolated_completion_prefix()
+        first = self.shell.run(prefix + "zshard complete", interactive=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        dump = next((self.home / "cache/zshard").glob("zcompdump-*"))
+        prepared = (dump.stat().st_mtime_ns, dump.read_bytes())
+        (self.home / "completion-fixture" / "_added").write_text("#compdef added\n")
+        result = self.shell.run(prefix + "zshard complete; print -r -- $_comps[added]", interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "_added")
+        self.assertNotEqual((dump.stat().st_mtime_ns, dump.read_bytes()), prepared)
+
+    def test_same_count_completion_rename_invalidates_cache(self):
+        prefix = self.isolated_completion_prefix()
+        first = self.shell.run(prefix + "zshard complete", interactive=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        directory = self.home / "completion-fixture"
+        (directory / "_fixture").unlink()
+        (directory / "_replacement").write_text("#compdef replacement\n")
+        result = self.shell.run(prefix + "zshard complete; print -r -- "
+                                "$+_comps[fixture] $_comps[replacement]", interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "0 _replacement")
+
+    def test_completion_metadata_encodes_line_breaks(self):
+        prefix = self.isolated_completion_prefix()
+        unusual = self.home / "line\nprint METADATA_EXECUTED\rname"
+        unusual.mkdir()
+        (unusual / "_unusual").write_text("#compdef unusual\n")
+        prefix += "fpath+=(" + shlex.quote(str(unusual)) + "); "
+        first = self.shell.run(prefix + "zshard complete", interactive=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        dump = next((self.home / "cache/zshard").glob("zcompdump-*"))
+        prepared = (dump.stat().st_mtime_ns, dump.read_bytes())
+        metadata = prepared[1].split(b"\n")[1]
+        self.assertTrue(metadata.startswith(b"# zshard-audit: "))
+        self.assertNotIn(b"\r", metadata)
+        self.assertIn(b"\\n", metadata)
+        self.assertIn(b"\\r", metadata)
+        result = self.shell.run(prefix + "zshard complete; print -r -- safe", interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "safe")
+        self.assertEqual((dump.stat().st_mtime_ns, dump.read_bytes()), prepared)
+
+    @unittest.skipUnless(os.geteuid() == 0, "ownership transition requires an isolated root test")
+    def test_changed_completion_file_ownership_invalidates_cache(self):
+        prefix = self.isolated_completion_prefix()
+        directory = self.home / "completion-fixture"
+        marker = self.home / "unsafe-completion-executed"
+        for name in ("one", "two"):
+            (directory / ("_owned_" + name)).write_text(
+                "#compdef owned-" + name + "\nprint unsafe > " + shlex.quote(str(marker)) + "\n")
+        first = self.shell.run(prefix + "zshard complete", interactive=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        for name in ("one", "two"):
+            os.chown(directory / ("_owned_" + name), 1234, 1234)
+        result = self.shell.run(
+            prefix + "zshard complete; print -r -- $+_comps[owned-one] $+_comps[owned-two]; "
+            'for name in owned-one owned-two; do '
+            'if (( $+_comps[$name] )); then "$_comps[$name]"; fi; done', interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "0 0")
+        self.assertFalse(marker.exists())
+
+    def test_private_group_completion_cache_is_reused(self):
+        username = pwd.getpwuid(os.getuid()).pw_name
+        group = grp.getgrgid(os.getgid())
+        if group.gr_name != username or set(group.gr_mem) - {username}:
+            self.skipTest("system does not use a private primary group")
+        self.shell.env["LOGNAME"] = username
+        prefix = self.isolated_completion_prefix()
+        accepted = self.home / "private-group"
+        accepted.mkdir(mode=0o775)
+        accepted.chmod(0o775)
+        (accepted / "_private").write_text("#compdef private\n")
+        rejected = self.home / "world-writable"
+        rejected.mkdir()
+        rejected.chmod(0o777)
+        (rejected / "_untrusted").write_text("#compdef untrusted\n")
+        prefix += "fpath+=(" + shlex.quote(str(accepted)) + " " + shlex.quote(str(rejected)) + "); "
+        probe = "zshard complete; print -r -- $+_comps[private] $+_comps[untrusted]"
+        first = self.shell.run(prefix + probe, interactive=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(first.stdout.strip(), "1 0")
+        dump = next((self.home / "cache/zshard").glob("zcompdump-*"))
+        prepared = (dump.stat().st_mtime_ns, dump.read_bytes())
+        second = self.shell.run(prefix + probe, interactive=True)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(second.stdout.strip(), "1 0")
+        self.assertEqual((dump.stat().st_mtime_ns, dump.read_bytes()), prepared)
+
+    def test_compdump_function_restored_after_failed_init(self):
+        result = self.shell.run(
+            'compdump() { print custom-dump; }; original=$functions[compdump]; '
+            'compaudit() { return 0; }; audit_original=$functions[compaudit]; '
+            'compinit() { return 37; }; _zshard_audited_compinit "$HOME/dump"; '
+            'print -r -- $?; [[ "$functions[compdump]" == "$original" && '
+            '"$functions[compaudit]" == "$audit_original" ]] || exit 1; '
+            'print -r -- $+functions[_zshard_original_compdump] '
+            '$+functions[_zshard_original_compaudit]; compdump', interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["37", "0 0", "custom-dump"])
+
+    def test_cache_publication_failure_is_reported_and_retryable(self):
+        prefix = self.isolated_completion_prefix()
+        self.shell.env["ZSHARD_CACHE_DIR"] = str(self.home / "cache" / "zshard")
+        result = self.shell.run(
+            prefix +
+            'zf_mv() { if [[ $argv[-1] == "$ZSHARD_CACHE_DIR/zcompdump-$ZSH_VERSION" ]]; '
+            'then return 73; fi; builtin zf_mv "$@"; }; '
+            'zshard complete; print -r -- $? $_ZSHARD_COMPLETION_READY; '
+            'print -r -- $+functions[_zshard_original_compdump] $+functions[_zshard_original_compaudit]; '
+            'unfunction zf_mv; zshard complete; print -r -- $? $_ZSHARD_COMPLETION_READY',
+            interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["73 0", "0 0", "0 1"])
+        cache = self.home / "cache" / "zshard"
+        self.assertEqual(len(list(cache.glob("zcompdump-*"))), 1)
+        self.assertFalse(list(cache.glob("*.zshard.*")))
+
+    def test_cache_metadata_write_failure_is_reported(self):
+        prefix = self.isolated_completion_prefix()
+        result = self.shell.run(
+            prefix + 'zf_mv() { return 73; }; zshard complete; print -r -- $? $_ZSHARD_COMPLETION_READY',
+            interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "1 0")
+        self.assertFalse(list((self.home / "cache" / "zshard").glob("zcompdump-*")))
 
     def test_writable_completion_dump_is_not_executed(self):
         prefix = self.isolated_completion_prefix()

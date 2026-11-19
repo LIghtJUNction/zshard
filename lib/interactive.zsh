@@ -99,6 +99,123 @@ _zshard_cache_usable() {
   return 0
 }
 
+_zshard_cache_compdump() {
+  emulate -L zsh
+  # compinit dynamically shares its audited candidate list with compaudit.
+  # compdump recomputes a different count for rejected paths, symlinks and
+  # private groups. Preserve compinit's count so its next audit can reuse it.
+  local -i candidate_count=$#_i_files created=0
+  local dump=$_comp_dumpfile header content temporary
+  local -A previous fresh
+  zstat -H previous -- "$dump" 2>/dev/null
+  _zshard_original_compdump "$@" || return
+  [[ ${parameters[_i_files]-} == *array* && $dump == "$_comp_dumpfile" &&
+     -f $dump && -O $dump && ! -L $dump ]] || return 0
+  zstat -H fresh -- "$dump" 2>/dev/null || return
+  # Native compdump atomically replaces its output; leave custom/no-op dumps.
+  [[ ${previous[inode]-} == "$fresh[inode]" &&
+     ${previous[device]-} == "$fresh[device]" ]] && return 0
+  zf_chmod 600 "$dump" || return
+  _zshard_cache_usable "$dump" || return
+  IFS= read -r header < "$dump" || return
+  local expected="#files: $candidate_count"$'\t'"version: $ZSH_VERSION"
+  [[ $header == '#files: '*$'\tversion: '"$ZSH_VERSION" ]] || return 0
+  content=$(<"$dump")
+  [[ $content == *$'\n'* ]] || return 1
+  temporary=$dump.zshard.$$.$RANDOM
+  zmodload -F zsh/files b:zf_mv b:zf_rm || return
+  {
+    setopt noclobber
+    { created=1; print -rl -- "$expected" "# zshard-audit: $_zshard_audit_record"
+      print -r -- "${content#*$'\n'}"
+    } > "$temporary" || return
+    zf_chmod 600 "$temporary" || return
+    zf_mv -f -- "$temporary" "$dump"
+  } always {
+    (( created )) && [[ -e $temporary ]] && zf_rm -f -- "$temporary"
+  }
+}
+
+_zshard_cache_compaudit() {
+  emulate -L zsh
+  _zshard_original_compaudit "$@"
+  local -i audit_status=$?
+  local directory relative_base='' first stored
+  for directory in "$fpath[@]"; do
+    [[ $directory != /* && $directory != . ]] && relative_base=$PWD
+  done
+  # A count alone misses renames and ownership changes with equal file totals.
+  # Observe native audit inputs and exclusions; never evaluate this metadata.
+  printf -v _zshard_audit_record '%q ' v1 "$ZSH_VERSION" "$relative_base" \
+    "$#fpath" "$fpath[@]" "$#_i_files" "$_i_files[@]" \
+    "$#_i_wdirs" "$_i_wdirs[@]" "$#_i_wfiles" "$_i_wfiles[@]"
+  if [[ $_zshard_audit_record == *$'\n'* || $_zshard_audit_record == *$'\r'* ]]; then
+    _comp_dumpfile=/dev/null _i_autodump=0
+    return $audit_status
+  fi
+  if [[ -r $_zshard_cache_target ]]; then
+    { IFS= read -r first; IFS= read -r stored; } < "$_zshard_cache_target"
+  fi
+  if [[ $stored != "# zshard-audit: $_zshard_audit_record" ]]; then
+    # A fresh path forces ordinary audited compinit to rebuild. The old cache
+    # stays intact until its complete replacement (metadata included) is ready.
+    _zshard_cache_staging=$_zshard_cache_target.zshard.$$.$RANDOM
+    while [[ -e $_zshard_cache_staging || -L $_zshard_cache_staging ||
+             -e $_zshard_cache_staging.zwc || -L $_zshard_cache_staging.zwc ]]; do
+      _zshard_cache_staging=$_zshard_cache_target.zshard.$$.$RANDOM
+    done
+    _comp_dumpfile=$_zshard_cache_staging
+  fi
+  return $audit_status
+}
+
+_zshard_audited_compinit() {
+  emulate -L zsh
+  local -i completion_status=1
+  local _zshard_cache_target=$1 _zshard_cache_staging='' _zshard_audit_record=''
+  local cache_header cache_record
+  autoload -RUz compinit compdump compaudit
+  functions -c compdump _zshard_original_compdump || return
+  functions -c compaudit _zshard_original_compaudit || {
+    unfunction _zshard_original_compdump
+    return 1
+  }
+  functions[compdump]=$functions[_zshard_cache_compdump]
+  functions[compaudit]=$functions[_zshard_cache_compaudit]
+  zmodload -F zsh/files b:zf_mv b:zf_rm
+  {
+    # Keep the native audit and invalidation checks on every warm load.
+    compinit -i -d "$1"
+    completion_status=$?
+    if (( completion_status == 0 )) && [[ -n $_zshard_cache_staging ]]; then
+      if [[ -f $_zshard_cache_staging ]] && _zshard_cache_usable "$_zshard_cache_staging"; then
+        { IFS= read -r cache_header; IFS= read -r cache_record; } < "$_zshard_cache_staging"
+        if [[ $cache_record == "# zshard-audit: $_zshard_audit_record" ]]; then
+          # A stale compiled dump must not override the newly audited source.
+          zf_rm -f -- "$_zshard_cache_target.zwc" &&
+            zf_mv -f -- "$_zshard_cache_staging" "$_zshard_cache_target"
+          completion_status=$?
+        else
+          completion_status=1
+        fi
+      else
+        completion_status=1
+      fi
+    fi
+  } always {
+    if [[ -n $_zshard_cache_staging && -f $_zshard_cache_staging &&
+          -O $_zshard_cache_staging && ! -L $_zshard_cache_staging ]]; then
+      zf_rm -f -- "$_zshard_cache_staging"
+    fi
+    _comp_dumpfile=$_zshard_cache_target
+    unfunction compdump compaudit 2>/dev/null
+    functions -c _zshard_original_compdump compdump
+    functions -c _zshard_original_compaudit compaudit
+    unfunction _zshard_original_compdump _zshard_original_compaudit
+  }
+  return $completion_status
+}
+
 _zshard_completion_init() {
   emulate -L zsh
   (( _ZSHARD_COMPLETION_READY )) && return 0
@@ -108,7 +225,7 @@ _zshard_completion_init() {
     if _zshard_cache_usable "$cache" "$cache/zcompdump-$ZSH_VERSION" "$cache/zcompdump-$ZSH_VERSION.zwc"; then
       zf_chmod 700 "$cache" || return
       # A new audit runs for each shell, including when a dump already exists.
-      compinit -i -d "$cache/zcompdump-$ZSH_VERSION" || return
+      _zshard_audited_compinit "$cache/zcompdump-$ZSH_VERSION" || return
     else
       compinit -i -D -d /dev/null || return
     fi
