@@ -25,7 +25,7 @@ ZSHARD_SHELL_INTEGRATION=1  # optional OSC 7 / OSC 133
 source ~/.local/share/zshard/zshard.zsh
 ~~~
 
-See [configuration and extension APIs](docs/plugins.md). Startup, first completion, memory and comparison measurements are reproducible with [the benchmark script](scripts/benchmark.py). Faster startup partly comes from deferring completion; compare the feature-ready results as well.
+See [configuration and extension APIs](docs/plugins.md) and the [measured release results](docs/performance.md). Startup, first completion, memory and comparison measurements are reproducible with [the benchmark script](scripts/benchmark.py). Faster startup partly comes from deferring completion; compare the feature-ready results as well.
 
 ## Add only the plugins you want
 
