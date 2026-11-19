@@ -17,6 +17,33 @@ Set options before sourcing `zshard.zsh`. The framework can be sourced twice wit
 
 XDG defaults follow the usual `~/.local/share`, `~/.local/state` and `~/.cache` locations. Completion uses a private cache directory and runs `compinit -i` for every new shell; insecure completion directories are skipped. It never uses `compinit -C` to bypass the audit. Dump files and compiled dumps must be owned by the current user, not symlinks, and not writable by group or others; unsafe caches are bypassed.
 
+
+## Colors
+
+One palette controls the prompt, command highlighting, history suggestions and
+completion headings. Set these variables before sourcing `zshard.zsh`:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| ZSHARD_COLOR_PATH | `#e8ded2` | Warm white directory label |
+| ZSHARD_COLOR_ACCENT | `#d4a373` | Copper branch and prompt symbol |
+| ZSHARD_COLOR_MUTED | `#a3978b` | Command duration |
+| ZSHARD_COLOR_ERROR | `#e59a91` | Failed commands and unknown command tokens |
+| ZSHARD_COLOR_COMMAND | `#e8ded2` | Recognized command tokens |
+| ZSHARD_COLOR_KEYWORD | `#c5a4b6` | Shell keywords |
+| ZSHARD_COLOR_SUGGESTION | `#a3978b` | History suggestion text |
+| ZSHARD_COLOR_COMPLETION | `#d4a373` | Completion group descriptions |
+
+Values use zsh color syntax: `default`, standard color names, palette indices
+`0`–`255`, or `#RRGGBB`. The default RGB colors require a terminal with truecolor
+support, including ztty. For an older terminal, set palette indices before loading
+the framework. Custom prompt callbacks can use the same variables.
+
+The prompt reads Git HEAD through zsh builtins. Changing directories refreshes
+repository discovery; creating a repository in the current directory or removing
+the cached checkout refreshes it before the next prompt. No Git process, file
+watcher or network request runs as part of this refresh.
+
 ## Warm completion during installation
 
 Run `zshard cache warm [COMPLETION_DIR ...]` from the standalone CLI or an existing shell to prepare the audited completion dump. Installers can call this after installing files, so the first interactive Tab uses the warm cache. This operation performs work explicitly during installation; normal startup still defers completion. Pass extra completion directories in the same order used by the interactive configuration. `ZSHARD_CACHE_DIR` can keep a suite cache separate. Added or removed completion files can require a later rebuild.

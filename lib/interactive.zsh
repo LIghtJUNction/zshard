@@ -1,23 +1,48 @@
 typeset -gi _ZSHARD_LAST_EXIT=0 _ZSHARD_STARTED=0 _ZSHARD_COMPLETION_READY=0
-typeset -g _ZSHARD_GIT_DIR='' _ZSHARD_BRANCH='' _ZSHARD_POSTDISPLAY='' _ZSHARD_SUGGESTION=''
+typeset -g _ZSHARD_GIT_DIR='' _ZSHARD_GIT_ROOT='' _ZSHARD_BRANCH='' _ZSHARD_POSTDISPLAY='' _ZSHARD_SUGGESTION=''
+
+# Shared prompt, editor and completion colors; zsh supports names, indices and RGB.
+typeset -g ZSHARD_COLOR_PATH="${ZSHARD_COLOR_PATH:-#e8ded2}"
+typeset -g ZSHARD_COLOR_ACCENT="${ZSHARD_COLOR_ACCENT:-#d4a373}"
+typeset -g ZSHARD_COLOR_MUTED="${ZSHARD_COLOR_MUTED:-#a3978b}"
+typeset -g ZSHARD_COLOR_ERROR="${ZSHARD_COLOR_ERROR:-#e59a91}"
+typeset -g ZSHARD_COLOR_COMMAND="${ZSHARD_COLOR_COMMAND:-#e8ded2}"
+typeset -g ZSHARD_COLOR_KEYWORD="${ZSHARD_COLOR_KEYWORD:-#c5a4b6}"
+typeset -g ZSHARD_COLOR_SUGGESTION="${ZSHARD_COLOR_SUGGESTION:-#a3978b}"
+typeset -g ZSHARD_COLOR_COMPLETION="${ZSHARD_COLOR_COMPLETION:-#d4a373}"
 
 _zshard_git_location() {
   emulate -L zsh
   local dir=$PWD line target
-  _ZSHARD_GIT_DIR=''
-  while [[ $dir != / ]]; do
-    if [[ -d $dir/.git ]]; then _ZSHARD_GIT_DIR=$dir/.git; break; fi
+  _ZSHARD_GIT_DIR='' _ZSHARD_GIT_ROOT=''
+  while true; do
+    if [[ -d $dir/.git ]]; then _ZSHARD_GIT_DIR=$dir/.git; _ZSHARD_GIT_ROOT=$dir; break; fi
     if [[ -f $dir/.git ]]; then
       IFS= read -r line < "$dir/.git"
       if [[ $line == 'gitdir: '* ]]; then
         target=${line#gitdir: }
         [[ $target == /* ]] || target=$dir/$target
-        [[ -d $target ]] && _ZSHARD_GIT_DIR=${target:A}
+        if [[ -d $target ]]; then
+          _ZSHARD_GIT_DIR=${target:A}
+          _ZSHARD_GIT_ROOT=$dir
+        fi
       fi
       break
     fi
+    [[ $dir == / ]] && break
     dir=${dir:h}
   done
+}
+
+_zshard_git_refresh() {
+  # Keep the common repository path bounded. A new .git in this directory or a
+  # removed checkout invalidates the location; outside Git, look for new parents.
+  if [[ -z $_ZSHARD_GIT_DIR || ! -f $_ZSHARD_GIT_DIR/HEAD ||
+        ! -e $_ZSHARD_GIT_ROOT/.git ||
+        ( $PWD != $_ZSHARD_GIT_ROOT && -e $PWD/.git ) ]]; then
+    _zshard_git_location
+  fi
+  _zshard_git_branch
 }
 
 _zshard_git_branch() {
@@ -58,25 +83,28 @@ _zshard_preexec() {
 _zshard_precmd() {
   local last=$?
   _ZSHARD_LAST_EXIT=$last
-  local branch='' result='' elapsed='' marker=''
+  local branch='' result='' elapsed='' begin='' end='' indicator='❯'
   integer seconds=0
   (( _ZSHARD_STARTED )) && seconds=$(( EPOCHSECONDS - _ZSHARD_STARTED ))
   _ZSHARD_STARTED=0
   if [[ ${ZSHARD_PROMPT:-minimal} != off ]]; then
-    _zshard_git_branch
-    [[ -n $_ZSHARD_BRANCH ]] && branch=" %F{242}$_ZSHARD_BRANCH%f"
-    (( last )) && result=" %F{red}!$last%f"
-    (( seconds >= 2 )) && elapsed=" %F{242}${seconds}s%f"
+    _zshard_git_refresh
     if [[ ${ZSHARD_SHELL_INTEGRATION:-0} == 1 && -t 1 ]]; then
       print -rn -- $'\e]133;D;'"$last"$'\a'
       _zshard_uri_path
       print -rn -- $'\e]7;file://localhost'"$REPLY"$'\a'
-      marker=$'%{\e]133;A\a%}'
-      PROMPT="$marker%F{blue}%1~%f$branch$result$elapsed"$'\n'"%F{green}%#%f "$'%{\e]133;B\a%}'
-    else
-      PROMPT="%F{blue}%1~%f$branch$result$elapsed"$'\n''%F{green}%#%f '
+      begin=$'%{\e]133;A\a%}'
+      end=$'%{\e]133;B\a%}'
     fi
-    RPROMPT=''
+    # A custom callback owns its layout. Avoid formatting a discarded prompt.
+    if [[ -z ${ZSHARD_PROMPT_FUNCTION-} ]] || (( ! $+functions[$ZSHARD_PROMPT_FUNCTION] )); then
+      [[ -n $_ZSHARD_BRANCH ]] && branch="  %F{${ZSHARD_COLOR_ACCENT}}$_ZSHARD_BRANCH%f"
+      (( last )) && result="  %F{${ZSHARD_COLOR_ERROR}}!$last%f"
+      (( seconds >= 2 )) && elapsed="  %F{${ZSHARD_COLOR_MUTED}}${seconds}s%f"
+      (( EUID == 0 )) && indicator='#'
+      PROMPT="${begin}%F{${ZSHARD_COLOR_PATH}}%1~%f$branch$result$elapsed"$'\n'"%F{${ZSHARD_COLOR_ACCENT}}${indicator}%f ${end}"
+      RPROMPT=''
+    fi
   fi
   if [[ -n ${ZSHARD_PROMPT_FUNCTION-} ]] && (( $+functions[$ZSHARD_PROMPT_FUNCTION] )); then
     "$ZSHARD_PROMPT_FUNCTION" "$last" "$seconds"
@@ -257,10 +285,10 @@ _zshard_redraw() {
     start=$(( ${#MATCH} - ${#command_word} ))
     end=$(( start + ${#command_word} ))
     if (( $+commands[$command_word] || $+builtins[$command_word] || $+functions[$command_word] )) ||
-      [[ -x $command_word && ! -d $command_word ]]; then color=green
-    elif [[ $command_word == (if|then|else|elif|fi|for|while|until|do|done|case|esac|function|select|repeat|time|coproc|foreach|end) ]]; then color=magenta
+      [[ -x $command_word && ! -d $command_word ]]; then color=$ZSHARD_COLOR_COMMAND
+    elif [[ $command_word == (if|then|else|elif|fi|for|while|until|do|done|case|esac|function|select|repeat|time|coproc|foreach|end) ]]; then color=$ZSHARD_COLOR_KEYWORD
     elif [[ $command_word == *[\$\`\\\"\'=]* ]]; then color=default
-    else color=red
+    else color=$ZSHARD_COLOR_ERROR
     fi
     region_highlight+=("$start $end fg=$color memo=zshard")
   fi
@@ -274,7 +302,7 @@ _zshard_redraw() {
       _ZSHARD_SUGGESTION=${candidate[${#BUFFER}+1,-1]}
       POSTDISPLAY=$_ZSHARD_SUGGESTION
       _ZSHARD_POSTDISPLAY=$POSTDISPLAY
-      region_highlight+=("${#BUFFER} $(( ${#BUFFER} + ${#POSTDISPLAY} )) fg=242 memo=zshard")
+      region_highlight+=("${#BUFFER} $(( ${#BUFFER} + ${#POSTDISPLAY} )) fg=$ZSHARD_COLOR_SUGGESTION memo=zshard")
       break
     fi
   done
@@ -327,7 +355,7 @@ _zshard_interactive_init() {
   zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*'
   zstyle ':completion:*' list-colors ''
   zstyle ':completion:*' group-name ''
-  zstyle ':completion:*:descriptions' format '%F{blue}%d%f'
+  zstyle ':completion:*:descriptions' format "%F{$ZSHARD_COLOR_COMPLETION}%d%f"
   [[ ${ZSHARD_KEYMAP:-emacs} == vi ]] && bindkey -v || bindkey -e
   KEYTIMEOUT=${KEYTIMEOUT:-20}
   zle -N zshard-forward _zshard_forward

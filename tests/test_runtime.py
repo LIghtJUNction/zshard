@@ -490,6 +490,83 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(marker.exists())
 
+
+    def test_default_palette_is_shared_without_blue_or_green(self):
+        shell = Shell(self.home, {"ZSHARD_PROMPT": "minimal"})
+        result = shell.run(
+            '_zshard_precmd; print -r -- "$PROMPT"; '
+            "BUFFER=print; CURSOR=5; _zshard_redraw; print -rl -- $region_highlight; "
+            "zstyle -s ':completion:*:descriptions' format REPLY; print -r -- $REPLY",
+            interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("%F{#e8ded2}", result.stdout)
+        self.assertIn("%F{#d4a373}", result.stdout)
+        self.assertIn("fg=#e8ded2 memo=zshard", result.stdout)
+        self.assertIn("%F{#d4a373}%d%f", result.stdout)
+        self.assertNotIn("%F{blue}", result.stdout)
+        self.assertNotIn("fg=green", result.stdout)
+
+    def test_user_colors_reach_prompt_highlight_and_completion(self):
+        shell = Shell(self.home, {
+            "ZSHARD_PROMPT": "minimal", "ZSHARD_COLOR_PATH": "252",
+            "ZSHARD_COLOR_ACCENT": "173", "ZSHARD_COLOR_ERROR": "203",
+            "ZSHARD_COLOR_COMMAND": "223", "ZSHARD_COLOR_KEYWORD": "181",
+            "ZSHARD_COLOR_COMPLETION": "216",
+        })
+        result = shell.run(
+            'false; _zshard_precmd; print -r -- "$PROMPT"; '
+            "BUFFER=print; CURSOR=5; _zshard_redraw; print -rl -- $region_highlight; "
+            "BUFFER=if; CURSOR=2; _zshard_redraw; print -rl -- $region_highlight; "
+            "BUFFER=__zshard_missing_command__; CURSOR=${#BUFFER}; "
+            "_zshard_redraw; print -rl -- $region_highlight; "
+            "zstyle -s ':completion:*:descriptions' format REPLY; print -r -- $REPLY",
+            interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for expected in ("%F{252}", "%F{173}", "%F{203}!1",
+                         "fg=223 memo=zshard", "fg=181 memo=zshard",
+                         "fg=203 memo=zshard", "%F{216}%d%f"):
+            self.assertIn(expected, result.stdout)
+
+    def test_prompt_discovers_git_init_without_chdir(self):
+        shell = Shell(self.home, {"ZSHARD_PROMPT": "minimal"})
+        result = shell.run(
+            'cd "$HOME"; _zshard_precmd; print -r -- "before:$_ZSHARD_BRANCH"; '
+            "command git init -q --initial-branch=copper; "
+            '_zshard_precmd; print -r -- "after:$_ZSHARD_BRANCH"',
+            interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ["before:", "after:copper"])
+
+    def test_prompt_switches_to_nested_repository_and_back(self):
+        subprocess.run(["git", "init", "-q", "--initial-branch=outer", str(self.home)],
+                       check=True, capture_output=True)
+        (self.home / "child").mkdir()
+        shell = Shell(self.home, {"ZSHARD_PROMPT": "minimal"})
+        result = shell.run(
+            'cd "$HOME/child"; _zshard_precmd; print -r -- "outer:$_ZSHARD_BRANCH"; '
+            "command git init -q --initial-branch=inner; "
+            '_zshard_precmd; print -r -- "inner:$_ZSHARD_BRANCH"; '
+            "command mv .git retired-git; "
+            '_zshard_precmd; print -r -- "restored:$_ZSHARD_BRANCH"',
+            interactive=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            "outer:outer", "inner:inner", "restored:outer"])
+
+    def test_pty_custom_command_and_suggestion_colors(self):
+        terminal = Terminal(self.home, {
+            "ZSHARD_COLOR_COMMAND": "#d4a373", "ZSHARD_COLOR_SUGGESTION": "#a3978b",
+        })
+        try:
+            terminal.command("print -s -- 'print -r -- palette-example'")
+            terminal.read_for(0.05)
+            terminal.send("print -r -- palette")
+            output = terminal.until(b"example") + terminal.read_for(0.1)
+            self.assertIn(b"\x1b[38;2;212;163;115m", output)
+            self.assertIn(b"\x1b[38;2;163;151;139m", output)
+        finally:
+            terminal.close()
+
     def test_prompt_escapes_git_branch(self):
         result = self.shell.run("_ZSHARD_GIT_DIR=" + shlex.quote(str(self.home)) +
                                 "; _zshard_git_branch; print -r -- $_ZSHARD_BRANCH", interactive=True)
@@ -505,7 +582,8 @@ class RuntimeTests(unittest.TestCase):
         result = subprocess.run(["strace", "-f", "-e", "trace=process", "-o", str(trace),
                                  "zsh", "-f", "-i", "-c",
                                  'source "$ZSHARD_HOME/zshard.zsh"; _zshard_precmd'],
-                                env=self.shell.env, cwd=ROOT, capture_output=True, text=True)
+                                env={**self.shell.env, "ZSHARD_PROMPT": "minimal"},
+                                cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         data = trace.read_text()
         self.assertIsNone(re.search(r"\b(?:clone|clone3|fork|vfork)\(", data), data)

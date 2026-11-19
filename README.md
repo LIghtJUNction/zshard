@@ -1,6 +1,6 @@
 # zshard
 
-A small zsh framework for Project Z. Completion, history suggestions, command highlighting, a quiet prompt, and explicit AI handoff fit in ordinary zsh scripts.
+A small zsh framework for Project Z. Completion, history suggestions, command highlighting, a warm copper prompt, and explicit AI handoff fit in ordinary zsh scripts.
 
 Part of [oh-my-ztty](https://github.com/LIghtJUNction/oh-my-ztty). Use it on its own with zsh 5.9 or newer:
 
@@ -13,7 +13,7 @@ Add that source line to your zsh configuration when ready. Remove the line to un
 
 ## The shell stays small
 
-The prompt reads Git's HEAD directly. It shows the directory, branch, exit status and slow-command duration. There is no prompt subprocess, network request, background watcher or required icon font. A real process trace tests that contract.
+The prompt reads Git's HEAD directly. Its palette is shared with command highlights, suggestions and completion headings; [all eight colors can be configured](docs/plugins.md#colors). It shows the directory, branch, exit status and slow-command duration. There is no prompt subprocess, network request, background watcher or required icon font. A real process trace tests that contract.
 
 Completion initializes on the first Tab, with zsh's security audit. [Cache validation](docs/completion-cache.md) checks the current completion inputs and audit exclusions before reusing a dump. History suggestions inspect a bounded recent window; Right or Ctrl-F accepts the text. Highlighting recognizes the first command token. This is a small editor integration, not a full shell grammar checker.
 
