@@ -2,7 +2,21 @@
 
 zshard starts with ordinary zsh code and no background process. Its default startup defers completion, plugin management and AI helpers until needed. The complete startup measurement below includes audited completion and keeps that distinction visible.
 
-## Measurements
+## 0.2.0 palette and interaction measurements
+
+The warm copper defaults keep real first-prompt delivery near 4.1 ms in a
+31-sample interleaved comparison with 0.1.3. Repeated redraws of unchanged input
+reuse a bounded history result: that specific miss case measured 0.0695 ms
+instead of 0.7254 ms. Changing-input misses measured 0.7210 ms instead of
+0.6939 ms, so the cache benefit is not a per-keystroke speed claim.
+
+Default initialization measured 3.655 ms median; initialization with audited
+completion ready measured 17.601 ms. Default idle shell PSS was 1478 KiB.
+The [0.2.0 validation record](release-0.2.0.md) contains exact source revisions,
+all timings, memory boundaries, 37 local runtime contracts and reproducible
+commands. Earlier measurements below retain their original source and scope.
+
+## Earlier 0.1.2 measurements
 
 Source commit: `3367c8dadef1a06a047ce9b47aa9446fe219550c`. zsh: `zsh 5.9.2 (x86_64-pc-linux-gnu)`. CPU: 12th Gen Intel(R) Core(TM) i9-12900HX. Raw timestamp: 2026-11-19T20:06:22.203002+00:00.
 

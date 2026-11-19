@@ -1,0 +1,394 @@
+{
+  "schema": "zshard.benchmark.v1",
+  "timestamp_utc": "2026-11-19T22:32:56.289490+00:00",
+  "system": {
+    "os": "Linux",
+    "kernel": "7.3.4-arch1-1",
+    "arch": "x86_64",
+    "cpu": "12th Gen Intel(R) Core(TM) i9-12900HX",
+    "load_average": [
+      6.93896484375,
+      6.0068359375,
+      6.1923828125
+    ]
+  },
+  "zsh_version": "zsh 5.9.2 (x86_64-pc-linux-gnu)",
+  "framework": {
+    "version": "0.1.3",
+    "revision": "f21edef8621719f960fffcac1bb671f34c6dac34",
+    "source_files": "zshard.zsh, lib/*.zsh"
+  },
+  "method": {
+    "startup": "Wall clock of zsh -f -i -c setup; includes process launch and initialization, excludes first prompt rendering",
+    "sample_count": 31,
+    "warmups": 3,
+    "order": "seeded interleaving",
+    "state": "isolated empty HOME, warm completion dumps after warmups",
+    "memory": "Five idle zsh processes per variant; /proc/PID/smaps_rollup; no terminal emulator",
+    "completion": "Internal wall clock for the first compinit per process; warm or absent disk dump",
+    "comparison_limit": "The OMZ git baseline does not include extra autosuggestion or highlighting plugins; no universal speed ranking is claimed"
+  },
+  "provenance": {},
+  "startup_ms": {
+    "vanilla_zsh": {
+      "median": 1.53,
+      "p95": 1.727,
+      "min": 1.024,
+      "max": 1.854,
+      "samples": [
+        1.854488,
+        1.691948,
+        1.250339,
+        1.700089,
+        1.31131,
+        1.537852,
+        1.293125,
+        1.699071,
+        1.557269,
+        1.592626,
+        1.41017,
+        1.523338,
+        1.21252,
+        1.023963,
+        1.493576,
+        1.560406,
+        1.242661,
+        1.530091,
+        1.511073,
+        1.399107,
+        1.591392,
+        1.668483,
+        1.699171,
+        1.430087,
+        1.642683,
+        1.651521,
+        1.402927,
+        1.407174,
+        1.289409,
+        1.726736,
+        1.546654
+      ]
+    },
+    "zsh_with_compinit": {
+      "median": 11.619,
+      "p95": 14.257,
+      "min": 9.972,
+      "max": 14.333,
+      "samples": [
+        14.332751,
+        12.181646,
+        12.691479,
+        10.545659,
+        11.035694,
+        10.879158,
+        12.909982,
+        10.727185,
+        13.169218,
+        13.159132,
+        12.42285,
+        10.503779,
+        10.714824,
+        13.648753,
+        9.972224,
+        14.257473,
+        11.607087,
+        12.242362,
+        13.559835,
+        10.95127,
+        11.322844,
+        10.652545,
+        12.075173,
+        11.083565,
+        10.842419,
+        10.720959,
+        11.053464,
+        11.619067,
+        12.515438,
+        11.626448,
+        11.912053
+      ]
+    },
+    "zshard_startup": {
+      "median": 3.655,
+      "p95": 4.704,
+      "min": 2.913,
+      "max": 4.774,
+      "samples": [
+        3.655144,
+        4.504365,
+        3.900539,
+        4.77366,
+        2.912778,
+        4.538845,
+        3.222845,
+        2.979944,
+        4.278925,
+        4.481202,
+        4.704354,
+        3.06051,
+        4.567806,
+        4.331356,
+        3.430604,
+        2.948567,
+        3.168178,
+        3.929156,
+        3.371416,
+        3.226587,
+        3.431533,
+        3.312232,
+        4.047194,
+        4.377367,
+        3.809963,
+        4.3941,
+        3.110857,
+        3.269098,
+        4.036551,
+        3.335464,
+        3.555773
+      ]
+    },
+    "zshard_feature_ready": {
+      "median": 17.601,
+      "p95": 20.401,
+      "min": 15.597,
+      "max": 23.266,
+      "samples": [
+        19.837318,
+        23.265779,
+        19.411549,
+        17.600724,
+        17.919952,
+        16.984877,
+        17.80114,
+        17.205998,
+        18.548485,
+        15.787469,
+        17.196769,
+        16.943407,
+        16.682535,
+        15.597121,
+        18.705124,
+        17.336516,
+        18.655497,
+        17.416119,
+        17.031387,
+        17.804796,
+        18.21307,
+        16.728808,
+        17.617492,
+        16.847948,
+        17.606677,
+        20.401051,
+        16.243713,
+        17.162498,
+        17.552707,
+        18.277982,
+        18.574348
+      ]
+    }
+  },
+  "first_completion_ms": {
+    "warm_dump": {
+      "median": 14.381,
+      "p95": 18.119,
+      "min": 12.86,
+      "max": 19.359,
+      "samples": [
+        13.977289,
+        14.029503,
+        15.991449,
+        19.35935,
+        18.119097,
+        16.412258,
+        13.818979,
+        15.561104,
+        15.662909,
+        15.130281,
+        14.635324,
+        14.380932,
+        13.513327,
+        13.629436,
+        14.231205,
+        13.563395,
+        13.753176,
+        15.817404,
+        15.400171,
+        14.930487,
+        14.482737,
+        13.151407,
+        12.859583,
+        13.352394,
+        14.109373,
+        16.311169,
+        15.342236,
+        16.352892,
+        13.3636,
+        13.424158,
+        13.046265
+      ]
+    },
+    "cold_dump": {
+      "median": 153.552,
+      "p95": 203.026,
+      "min": 148.819,
+      "max": 203.026,
+      "samples": [
+        148.834467,
+        153.552294,
+        148.819208,
+        203.026056,
+        183.464527
+      ]
+    }
+  },
+  "idle_memory": {
+    "vanilla_zsh": [
+      {
+        "rss_kib": 4844,
+        "pss_kib": 1057,
+        "private_clean_kib": 240,
+        "private_dirty_kib": 404,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 4872,
+        "pss_kib": 1066,
+        "private_clean_kib": 244,
+        "private_dirty_kib": 404,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 4872,
+        "pss_kib": 1070,
+        "private_clean_kib": 252,
+        "private_dirty_kib": 404,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 4860,
+        "pss_kib": 1027,
+        "private_clean_kib": 208,
+        "private_dirty_kib": 400,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 4816,
+        "pss_kib": 1030,
+        "private_clean_kib": 204,
+        "private_dirty_kib": 408,
+        "child_processes": 0
+      }
+    ],
+    "zsh_with_compinit": [
+      {
+        "rss_kib": 6664,
+        "pss_kib": 2586,
+        "private_clean_kib": 228,
+        "private_dirty_kib": 1772,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 6668,
+        "pss_kib": 2604,
+        "private_clean_kib": 228,
+        "private_dirty_kib": 1772,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 6752,
+        "pss_kib": 2622,
+        "private_clean_kib": 236,
+        "private_dirty_kib": 1776,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 6740,
+        "pss_kib": 2612,
+        "private_clean_kib": 228,
+        "private_dirty_kib": 1776,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 6696,
+        "pss_kib": 2616,
+        "private_clean_kib": 252,
+        "private_dirty_kib": 1776,
+        "child_processes": 0
+      }
+    ],
+    "zshard_startup": [
+      {
+        "rss_kib": 5596,
+        "pss_kib": 1478,
+        "private_clean_kib": 232,
+        "private_dirty_kib": 616,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 5572,
+        "pss_kib": 1446,
+        "private_clean_kib": 204,
+        "private_dirty_kib": 616,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 5580,
+        "pss_kib": 1506,
+        "private_clean_kib": 276,
+        "private_dirty_kib": 616,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 5588,
+        "pss_kib": 1458,
+        "private_clean_kib": 220,
+        "private_dirty_kib": 620,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 5656,
+        "pss_kib": 1495,
+        "private_clean_kib": 232,
+        "private_dirty_kib": 620,
+        "child_processes": 0
+      }
+    ],
+    "zshard_feature_ready": [
+      {
+        "rss_kib": 6892,
+        "pss_kib": 2786,
+        "private_clean_kib": 224,
+        "private_dirty_kib": 1936,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 6868,
+        "pss_kib": 2792,
+        "private_clean_kib": 236,
+        "private_dirty_kib": 1932,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 6908,
+        "pss_kib": 2824,
+        "private_clean_kib": 264,
+        "private_dirty_kib": 1936,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 6924,
+        "pss_kib": 2786,
+        "private_clean_kib": 220,
+        "private_dirty_kib": 1936,
+        "child_processes": 0
+      },
+      {
+        "rss_kib": 7004,
+        "pss_kib": 2843,
+        "private_clean_kib": 264,
+        "private_dirty_kib": 1936,
+        "child_processes": 0
+      }
+    ]
+  }
+}
