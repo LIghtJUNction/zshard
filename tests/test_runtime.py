@@ -20,7 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class Shell:
     def __init__(self, home, extra=None):
-        self.env = {**os.environ, "HOME": str(home), "ZDOTDIR": str(home),
+        inherited = {key: value for key, value in os.environ.items()
+                     if not key.startswith(("ZSHARD_", "OMZTTY_"))}
+        self.env = {**inherited, "HOME": str(home), "ZDOTDIR": str(home),
                     "XDG_STATE_HOME": str(home / "state"), "XDG_CACHE_HOME": str(home / "cache"),
                     "XDG_DATA_HOME": str(home / "data"), "TERM": "xterm-256color",
                     "ZSHARD_HOME": str(ROOT), "ZSHARD_PROMPT": "off"}
@@ -269,6 +271,27 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue((self.home / "cache/zshard").is_dir())
         self.assertEqual((self.home / "cache/zshard").stat().st_mode & 0o777, 0o700)
 
+    def test_existing_completion_precedence_in_lazy_and_eager_modes(self):
+        custom = self.home / "personal completions"
+        custom.mkdir()
+        for command in ("zshard", "zai"):
+            (custom / ("_" + command)).write_text(
+                f"#compdef {command}\nprint -r -- personal-{command}\n")
+        for mode in ("lazy", "eager"):
+            with self.subTest(mode=mode):
+                script = (
+                    "fpath=(" + shlex.quote(str(custom)) + ' "$fpath[@]"); '
+                    'source "$ZSHARD_HOME/zshard.zsh" && zshard complete; '
+                    'autoload -Uz _zshard _zai; _zshard; _zai'
+                )
+                result = subprocess.run(
+                    ["zsh", "-d", "-f", "-i", "-c", script],
+                    env={**self.shell.env, "ZSHARD_COMPLETION": mode},
+                    cwd=ROOT, text=True, capture_output=True, timeout=12)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.splitlines(),
+                                 ["personal-zshard", "personal-zai"])
+
     def test_cli_warms_completion_cache(self):
         custom = self.home / "suite-completions"
         custom.mkdir()
@@ -283,7 +306,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertFalse((self.home / "cache/zshard").exists())
         prepared = (dump.stat().st_mtime_ns, dump.read_bytes())
         result = self.shell.run(
-            'fpath=("$ZSHARD_HOME/completions" ' + shlex.quote(str(custom)) + ' "$fpath[@]"); '
+            'fpath=(' + shlex.quote(str(custom)) + ' "$fpath[@]"); '
             "zshard complete; print -r -- $_comps[suite-command]", interactive=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "_suite_command")

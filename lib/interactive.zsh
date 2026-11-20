@@ -348,7 +348,8 @@ _zshard_interactive_init() {
   zmodload -F zsh/files b:zf_mkdir b:zf_chmod
   autoload -Uz add-zsh-hook add-zle-hook-widget
   typeset -gU fpath
-  fpath=("$ZSHARD_HOME/completions" "${fpath[@]}")
+  # Existing fpath entries express user and suite completion precedence.
+  fpath+=("$ZSHARD_HOME/completions")
   setopt auto_cd auto_pushd pushd_ignore_dups interactive_comments
   setopt hist_ignore_space hist_reduce_blanks share_history extended_history hist_expire_dups_first hist_find_no_dups hist_save_no_dups
   setopt prompt_percent
